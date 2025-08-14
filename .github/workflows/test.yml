@@ -1,0 +1,61 @@
+name: Run Tests
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  BROADCAST_DRIVER: log
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+    steps:
+      - name: Checkout do código-fonte do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, bcmath, pdo, sqlite, pdo_sqlite, intl, fileinfo
+          coverage: xdebug
+
+      - name: Instalar dependências do Composer (dev)
+        run: composer install --ignore-platform-reqs --no-progress --prefer-dist --no-interaction
+
+      - name: Preparar o ambiente Laravel
+        run: |
+          php -r "file_exists('.env') || copy('.env.example', '.env');"
+          php artisan key:generate
+          chmod -R 777 storage bootstrap/cache
+          php artisan config:clear
+
+      - name: Preparar banco SQLite
+        run: |
+          mkdir -p database
+          touch database/database.sqlite
+
+      - name: Rodar migrations
+        run: php artisan migrate -v
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+
+      - name: Rodar testes e gerar cobertura
+        run: php artisan test --log-junit test-report-${{ matrix.php }}.xml --coverage-clover=coverage-${{ matrix.php }}.xml
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+
+      - name: Publicar relatórios de teste e cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-${{ matrix.php }}
+          path: |
+            test-report-${{ matrix.php }}.xml
+            coverage-${{ matrix.php }}.xml

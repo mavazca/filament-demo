@@ -1,0 +1,113 @@
+services:
+    app:
+        build:
+            context: .
+            dockerfile: docker/franken/Dockerfile
+            args:
+                APP_ENV: ${APP_ENV}
+        image: saasykit-frankenphp
+        ports:
+            - "80:80" # HTTP
+            - "443:443" # HTTPS
+            - "443:443/udp" # HTTP/3
+        volumes:
+            - ./:/app
+            - caddy_data:/data
+            - caddy_config:/config
+        # Comente a seguinte linha em produção, ela permite ver logs legíveis por humanos no desenvolvimento
+        tty: true
+        networks:
+            - laravel
+
+    reverb:
+        image: saasykit-frankenphp
+        entrypoint: ""
+        command: php artisan reverb:start --host=0.0.0.0 --port=6001
+        env_file:
+            - .env
+        ports:
+            - "6001:6001" # WebSocket
+        volumes:
+            - ./:/app
+            - caddy_data:/data
+            - caddy_config:/config
+        # Comente a seguinte linha em produção, ela permite ver logs legíveis por humanos no desenvolvimento
+        tty: true
+        healthcheck:
+            test: ["NONE"]
+        networks:
+            - laravel
+
+    horizon:
+        image: saasykit-frankenphp
+        entrypoint: ""
+        command: php artisan horizon
+        env_file:
+            - .env
+        volumes:
+            - ./:/app
+            - caddy_data:/data
+            - caddy_config:/config
+        # Comente a seguinte linha em produção, ela permite ver logs legíveis por humanos no desenvolvimento
+        tty: true
+        healthcheck:
+            test: ["NONE"]
+        networks:
+            - laravel
+
+    schedule:
+        image: saasykit-frankenphp
+        entrypoint: ""
+        command: /bin/sh -c "while true; do php artisan schedule:run --no-interaction; sleep 60; done"
+        env_file:
+            - .env
+        volumes:
+            - ./:/app
+            - caddy_data:/data
+            - caddy_config:/config
+        # Comente a seguinte linha em produção, ela permite ver logs legíveis por humanos no desenvolvimento
+        tty: true
+        healthcheck:
+            test: ["NONE"]
+        networks:
+            - laravel
+
+    postgres:
+        image: postgres:latest
+        restart: unless-stopped
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+        environment:
+            - POSTGRES_DB=${DB_DATABASE}
+            - POSTGRES_USER=${DB_USERNAME}
+            - POSTGRES_PASSWORD=${DB_PASSWORD}
+        networks:
+            - laravel
+
+    redis:
+        image: redis:latest
+        ports:
+            - "6379:6379"
+        networks:
+            - laravel
+
+    mailpit:
+        image: axllent/mailpit:latest
+        restart: on-failure
+        tty: true
+        ports:
+            - "1025:1025"
+            - "8025:8025"
+        networks:
+            - laravel
+
+volumes:
+    postgres_data:
+    caddy_data:
+    caddy_config:
+
+networks:
+    laravel:
+        driver: bridge

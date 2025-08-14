@@ -1,0 +1,135 @@
+services:
+  app:
+    image: ghcr.io/cod1green/saasykit-tenancy-multi-custom:latest
+    volumes:
+      - /mnt/shared_volume/caddy_data:/data
+      - /mnt/shared_volume/caddy_config:/config
+    # Comente a seguinte linha em produção, ela permite ver logs legíveis por humanos no desenvolvimento
+    tty: true
+    networks:
+      - monitoring
+      - traefik_public
+      - app_network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+      placement:
+        constraints:
+          - node.labels.app == true
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik_public"
+
+        - "traefik.http.routers.app-main.rule=Host(`kishop.com.br`)"
+        - "traefik.http.routers.app-main.entrypoints=websecure"
+        - "traefik.http.routers.app-main.priority=100"
+
+        - "traefik.http.routers.app-tenants.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.kishop.com.br`)"
+        - "traefik.http.routers.app-tenants.entrypoints=websecure"
+        - "traefik.http.routers.app-tenants.priority=10"
+
+        - "traefik.http.services.app.loadbalancer.server.port=80"
+        - "traefik.http.services.app.loadbalancer.sticky.cookie.name=app_session"
+        - "traefik.http.services.app.loadbalancer.sticky.cookie.secure=true"
+
+  reverb:
+    image: ghcr.io/cod1green/saasykit-tenancy-multi-custom:latest
+    entrypoint: ""
+    command: php artisan reverb:start --host=0.0.0.0 --port=6001
+    volumes:
+      - /mnt/shared_volume/caddy_data:/data
+      - /mnt/shared_volume/caddy_config:/config
+    # Comente a seguinte linha em produção, ela permite ver logs legíveis por humanos no desenvolvimento
+    tty: true
+    healthcheck:
+      test: ["NONE"]
+    networks:
+      - traefik_public
+      - app_network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 128M
+      placement:
+        constraints:
+          - node.labels.app == true
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik_public"
+        - "traefik.http.routers.reverb.rule=Host(`reverb.cod1green.com.br`)"
+        - "traefik.http.routers.reverb.entrypoints=websecure"
+        - "traefik.http.services.reverb.loadbalancer.server.port=6001"
+
+  horizon:
+    image: ghcr.io/cod1green/saasykit-tenancy-multi-custom:latest
+    entrypoint: ""
+    command: php artisan horizon
+    volumes:
+      - /mnt/shared_volume/caddy_data:/data
+      - /mnt/shared_volume/caddy_config:/config
+    # Comente a seguinte linha em produção, ela permite ver logs legíveis por humanos no desenvolvimento
+    tty: true
+    healthcheck:
+      test: ["NONE"]
+    networks:
+      - traefik_public
+      - app_network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+      placement:
+        constraints:
+          - node.labels.app == true
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik_public"
+        - "traefik.http.routers.horizon.rule=Host(`horizon.cod1green.com.br`)"
+        - "traefik.http.routers.horizon.entrypoints=websecure"
+        - "traefik.http.services.horizon.loadbalancer.server.port=80"
+
+  schedule:
+    image: ghcr.io/cod1green/saasykit-tenancy-multi-custom:latest
+    entrypoint: ""
+    command: /bin/sh -c "while true; do php artisan schedule:run --no-interaction; sleep 60; done"
+    volumes:
+      - /mnt/shared_volume/caddy_data:/data
+      - /mnt/shared_volume/caddy_config:/config
+    # Comente a seguinte linha em produção, ela permite ver logs legíveis por humanos no desenvolvimento
+    tty: true
+    healthcheck:
+      test: ["NONE"]
+    networks:
+      - app_network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 64M
+      placement:
+        constraints:
+          - node.labels.app == true
+
+networks:
+  monitoring:
+    external: true
+  traefik_public:
+    external: true
+  app_network:
+    external: true
