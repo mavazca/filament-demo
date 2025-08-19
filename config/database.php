@@ -118,7 +118,6 @@ return [
     */
 
     'redis' => [
-
         'client' => env('REDIS_CLIENT', 'phpredis'),
 
         'options' => [
@@ -126,7 +125,8 @@ return [
             'prefix' => env('REDIS_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_') . '_database_'),
         ],
 
-        'default' => [
+        // Configuração padrão para ambiente de desenvolvimento (instância única)
+        'default' => env('REDIS_USE_CLUSTER', false) ? [] : [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
             'password' => env('REDIS_PASSWORD', null),
@@ -134,7 +134,7 @@ return [
             'database' => env('REDIS_DB', '0'),
         ],
 
-        'cache' => [
+        'cache' => env('REDIS_USE_CLUSTER', false) ? [] : [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
             'password' => env('REDIS_PASSWORD', null),
@@ -142,6 +142,29 @@ return [
             'database' => env('REDIS_CACHE_DB', '1'),
         ],
 
+        // Configuração para ambiente de produção (cluster)
+        'clusters' => env('REDIS_USE_CLUSTER', false) ? [
+            'default' => [
+                [
+                    'host' => env('REDIS_HOST_MASTER'),
+                    'password' => env('REDIS_PASSWORD'),
+                    'port' => env('REDIS_PORT', '6379'),
+                    'database' => 0,
+                ],
+                [
+                    'host' => env('REDIS_HOST_REPLICA1'),
+                    'password' => env('REDIS_PASSWORD'),
+                    'port' => env('REDIS_PORT', '6379'),
+                    'database' => 0,
+                ],
+                [
+                    'host' => env('REDIS_HOST_REPLICA2'),
+                    'password' => env('REDIS_PASSWORD'),
+                    'port' => env('REDIS_PORT', '6379'),
+                    'database' => 0,
+                ],
+            ],
+        ] : [],
     ],
 
 ];

@@ -48,7 +48,7 @@ return [
 
         'redis' => [
             'driver' => 'redis',
-            'connection' => 'default',
+            'connection' => env('REDIS_USE_CLUSTER', false) ? 'clusters.default' : 'default',
         ],
 
         'log' => [

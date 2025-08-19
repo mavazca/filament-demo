@@ -75,8 +75,8 @@ return [
 
         'redis' => [
             'driver' => 'redis',
-            'connection' => 'cache',
-            'lock_connection' => 'default',
+            'connection' => env('REDIS_USE_CLUSTER', false) ? 'clusters.default' : 'default',
+            'lock_connection' => env('REDIS_USE_CLUSTER', false) ? 'clusters.default' : 'default',
         ],
 
         'dynamodb' => [

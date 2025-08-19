@@ -41,7 +41,7 @@ return [
     |
     */
 
-    'use' => 'default',
+    'use' => env('REDIS_USE_CLUSTER', false) ? 'clusters.default' : 'default',
 
     /*
     |--------------------------------------------------------------------------
